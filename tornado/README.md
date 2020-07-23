@@ -33,4 +33,20 @@ tornado 完整的请求过程
 5.execute函数内部就是构造hanlder业务类，并调用业务类的execute 函数 开始接触业务逻辑代码准备工作，首先调用 prepare函数 进行逻辑处理前的准备工作 然后调用 GET POST业务逻辑代码，业务逻辑
    根据情况回写数据 write 或者 render ，进行注册数据 并最终调用flush finish 函数 组织好header body 数据 写入 iostream对象 最终根据套接字写入客户端
    
- 
+   
+   关于 asyncio  可以看这个博客，有比较详细的介绍 
+    https://www.zhihu.com/people/zhihu_lh/posts
+    
+    asyncio在python3.4提供的，区别于 生成器和 协程的区别，提出了futrue task 概念 
+    futrue  等待时间循环调度的任务对象  调用futrue.set_rsult() 进行赋值  调用 futrue.result() 获取协程的结果 是一个可等待对象 其实就是等待调用回调函数的载体
+    task  是futrue 的子类，一般开发时候 将函数 创建成task 可等待对象 进行 等待调度 执行相应的回调函数
+    
+    
+    整个 asyncio 创建了 几个对象  reader  writer schel _ready  分别为可读 对象 可写对象 注册在selectors中 当发生 可读可写事件的时候 epoll 会返回相应的 文件文件描述符
+    和相应回调函数一起 进行加入 schel当中，进行统一调度 基于及时进行按照顺序进行相应调度 __ready 可调度任务列表，当符合调度的要求 进行调用回调函数完成该任务 
+    
+    hanlder 概念 ， 将回调函数进行封装 然后交给schel进行调度，当可读可写事件发生， 或者 用户调用 asyncio 的相应方法 比如 call_soon call_later call_at add_callback 等函数 将回调     进行添加到schel 当中 进行调度， 事件循环 回调用once函数，进行timeout计算 根据 超时设置 将符合调度的任务加入到_ready 中 ，最后 循环遍历_ready 列表 安时间顺序调用 每个hanlder对     象的 _run 方法 调用相应的 回调函数 
+    
+    以上就是asyncio  提供的事件循环调用来实现的协程的处理方式，另外其实现了很多功能 包括 网络 流 多进程 多线程等实现 可参考官网中文文档 
+    https://docs.python.org/zh-cn/3/library/asyncio-eventloop.html#
+    
