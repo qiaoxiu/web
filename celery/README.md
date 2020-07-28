@@ -16,6 +16,8 @@ broker = 'redis://localhost:6378/1'  # 中间消息队列角色 生成的消息 
 backend = 'redis://localhost:6378/2'  # 运行结果
 app = Celery('my_task',broker=broker,backend=backend) # 创建任务对象
 
+启动worker 当存在可消费的消息的时候来消费该消息 调用耗时任务
+celery worker -A tasks -l INFO
 
 @app.task
 def add(x,y):
