@@ -1,0 +1,23 @@
+redis 安装 
+
+wget http://download.redis.io/releases/redis-5.0.3.tar.gz
+tar -zxvf redis-5.0.3.tar.gz
+cd redis-5.0.3
+make
+
+make install PREFIX=/usr/local/redis
+
+cd /usr/local/redis/bin/
+
+cp yors/redis.conf /usr/local/redis/bin/
+
+修改 redis.conf 文件，把 daemonize no 改为 daemonize yes
+修改端口号 6378
+./redis-server redis.conf
+
+后端启动redis 服务 
+
+
+超链接 方便客户端 命令
+ln -s /usr/local/redis/bin/redis-cli /usr/bin/redis
+
