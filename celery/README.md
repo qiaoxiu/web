@@ -6,7 +6,7 @@ celery 是异步任务python 库，针对耗时任务进行消息队列分发，
       pip install celery 
       
 2.redis 安装
-      参考 
+      参考 https://github.com/qiaoxiu/web/blob/master/celery/redis_readme
       
  
  创建任务 tasks.py
