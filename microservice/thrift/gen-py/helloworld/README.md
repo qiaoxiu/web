@@ -1,3 +1,3 @@
-出了 server  和client  都是自动生成的  
+除了 server  和client  都是自动生成的  
  然后在server.py中实现接口的逻辑 启动该服务 让客户端进行指定端口号的接口调用
  不管服务端 和客户端都是根据thrift文件进行编程
