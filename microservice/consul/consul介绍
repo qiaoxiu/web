@@ -1,1 +1,127 @@
-![pic]{}
+随着单体页面不在适应互联网公司先有模式， 项目的架构复杂化，多维度扩展伸缩管理等 对服务的地址直接静态方式已经不适应现在模式 所以提出了 服务发现的概念
+主流服务发现提供软件是由分布式配置kv数据库zookeeper/etcd/consul 这里介绍用的比较多的consul
+
+Consul 是一种服务网格的解决方案，在 Consul 中，提供了服务发现、配置、分段等控制管理平台，Consul 中的每项功能都可以单独使用，也可以一起使用来构建完整的服务网格；在 Consul 内部，有一个简单的代理服务，所以在安装 Consul 后，马上就可以开始使用 Consul ；当然，Consul 也支持集成第三方代理，比如 Envoy。
+
+以上，是官方的介绍，我第一次看的时候也是非常的懵逼，因为这里面涉及了太多的专业词汇，下面就说说自己的理解。
+
+Consul 是一个服务组件，在用户下载 Consul 的安装包后，可以立即运行它，或者通过其它托管程序运行它，Consul 只有一个程序包，无需另行安装；当运行 Consul 的时候，需要为其指定一些必须的参数，以供 Consul 在运行时使用；
+比如参数 -data-dir 表示指定 Consul 存放数据的目录。
+
+consul 特点 
+服务发现 
+服务注册
+集群部署
+健康检查
+
+
+Consul 其实就是一个分布式的服务管理平台，Consul 本身不具备网关的能力，所以，在一般的业务系统中，如果要应用 Consul ，通常的做法是在 Consul 的 server 节点上安装一个 nginx，在 Consul 的服务注册完成后，生成 nginx 的配置文件并重新加载它；此时，Consul 看上去好像是通过 nginx 具有了网关的能力，实际上，他们直接毫无关系；Consul 生成的 nginx 配置文件和我们手写的 nginx 配置文件没有太多的不同，都是一样的，其实就是把手写 nginx 这种体力活给自动化了。
+
+下面介绍 Consul-Template
+
+Consul-Template 是方便调用consul 然后根据consul来生成nginx或者其他的模板 根据动态生成的模板 为持续提供网关服务能力 而无需手动实现 极大便利了部署分发
+
+首先安装 Consul-Template 
+wget https://releases.hashicorp.com/consul-template/0.18.3/consul-template_0.18.3_linux_amd64.zip
+
+unzip consul-template_0.18.3_linux_amd64.zip
+
+mv consul-template /usr/local/bin/
+vim tmpltest.ctmpl
+
+{{range services}}
+{{.Name}}
+{{range .Tags}}
+{{.}}{{end}}
+{{end}}
+
+
+consul-template -consul-addr 10.60.0.221:9500 -template "tmpltest.ctmpl:result" -once
+
+会根据模板定义来生成result 文件 文件里面内容为：
+
+consul
+
+
+seq
+
+这是我consul里存在的二个服务
+
+
+
+vim nginx.conf.ctmpl
+
+{{range services}} {{$name := .Name}} {{$service := service .Name}}
+upstream {{$name}} {
+  zone upstream-{{$name}} 64k;
+  {{range $service}}server {{.Address}}:{{.Port}} max_fails=3 fail_timeout=60 weight=1;
+  {{else}}server 127.0.0.1:65535; # force a 502{{end}}
+} {{end}}
+
+server {
+  listen 80 default_server;
+
+  location / {
+    root /usr/share/nginx/html/;
+    index index.html;
+  }
+
+  location /stub_status {
+    stub_status;
+  }
+
+{{range services}} {{$name := .Name}}
+  location /{{$name}} {
+    proxy_pass http://{{$name}};
+  }
+{{end}}
+}
+
+
+$ consul-template  -consul-addr 10.60.0.221:9500 -template="nginx.conf.ctmpl:/usr/local/nginx/conf/conf.d/default.conf:service nginx reload" -once
+
+
+会在生成的default.conf 文件中 生成符合nginx 要求的配置信息 
+
+也可以作为服务提供持续的服务 
+
+consul-template \
+  -consul-addr=10.60.0.221:9500 \
+  -template "tmpltest.ctmpl:test.out"
+  
+还可以 直接下载配置文件中 有服务统一管理 
+cat nginx.hcl
+
+
+consul {
+address = "10.60.0.221:9500"
+}
+
+template {
+source = "nginx.conf.ctmpl"
+destination = "/usr/local/nginx/conf/conf.d/default.conf"
+command = "service nginx reload"
+}
+
+consul-template -config "nginx.hcl"
+
+
+
+
+
+consul 集群安装
+
+wget https://releases.hashicorp.com/consul/1.5.1/consul_1.5.1_linux_amd64.zip
+
+unzip consul_1.5.1_linux_amd64.zip -d /usr/local/bin
+
+// 10.60.0.221:9500
+consul agent -server -ui -bootstrap-expect=3 -data-dir=/data/consul -node=agent-1 -client=0.0.0.0 -bind=172.16.1.218 -datacenter=dc1
+
+// 10.60.0.222
+consul agent -server -ui -bootstrap-expect=3 -data-dir=/data/consul -node=agent-2 -client=0.0.0.0 -bind=172.16.1.219 -datacenter=dc1 -join 10.60.0.221
+
+// 10.60.0.223
+consul agent -server -ui -bootstrap-expect=3 -data-dir=/data/consul -node=agent-3 -client=0.0.0.0 -bind=172.16.1.220 -datacenter=dc1 -join 10.60.0.221
+
+王文ui界面会看到三个代理，之间会高速同步数据，提供高性能的服务，如果主节点挂了， 会进行选举产生新的主节点 继续提供服务
