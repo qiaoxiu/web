@@ -57,13 +57,23 @@ rabbitmq 安装  环境是centos
 
 
    yum -y install erlang socat
+   
    wget https://www.rabbitmq.com/releases/rabbitmq-server/v3.6.10/rabbitmq-server-3.6.10-1.el7.noarch.rpm
+   
    rpm –import https://www.rabbitmq.com/rabbitmq-release-signing-key.asc
+   
    rpm -Uvh rabbitmq-server-3.6.10-1.el7.noarch.rpm
+   
    systemctl start rabbitmq-server
+   
    systemctl status rabbitmq-server
+   
    rabbitmq-plugins enable rabbitmq_management
+   
    chown -R rabbitmq:rabbitmq /var/lib/rabbitmq/
+   
    rabbitmqctl add_user admin 123456
+   
    rabbitmqctl set_user_tags admin administrator
+   
    rabbitmqctl set_permissions -p / admin “.*” “.*” “.*”
